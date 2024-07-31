@@ -5,7 +5,6 @@ from aiogram.types import (
     InlineKeyboardButton,
 )
 from aiogram.filters.callback_data import CallbackData
-from aiogram.fsm.state import State, StatesGroup
 
 
 TOKEN = "7451251483:AAGNpqnHcQSqK0VAixCsXJQRLempe3gdTOM"
@@ -13,15 +12,6 @@ TOKEN = "7451251483:AAGNpqnHcQSqK0VAixCsXJQRLempe3gdTOM"
 
 class ChoiceCallback(CallbackData, prefix="choice"):
     option: str
-
-
-class Form(StatesGroup):
-    name = State()
-    age = State()
-
-
-class LastMsg(StatesGroup):
-    msg = State()
 
 
 KEYBOARD = ReplyKeyboardMarkup(
