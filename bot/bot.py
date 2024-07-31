@@ -1,13 +1,15 @@
 import asyncio
 import logging
 
-from aiogram import Bot, Dispatcher, types, Router, F
+from aiogram import BaseMiddleware, Bot, Dispatcher, types, Router, F
 from aiogram.filters import CommandStart, Command
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.memory import MemoryStorage
+from typing import Callable, Dict, Any, Awaitable
 
-from config import INLINE_KEYBOARD, KEYBOARD, TOKEN, ChoiceCallback, Form
-
+from aiogram import BaseMiddleware
+from aiogram.fsm.context import FSMContext
+from config import INLINE_KEYBOARD, KEYBOARD, TOKEN, ChoiceCallback, Form, LastMsg
 
 bot = Bot(TOKEN)
 storage = MemoryStorage()
@@ -15,10 +17,50 @@ dp = Dispatcher(storage=storage)
 router = Router()
 
 
-@router.message(CommandStart())
-async def start(message: types.Message):
-    await message.answer("Добро пожаловать в наш бот!", reply_markup=KEYBOARD)
+class SlowpokeMiddleware(BaseMiddleware):
+    def __init__(self, sleep_sec: int):
+        super().__init__()
+        self.sleep_sec = sleep_sec
 
+    async def __call__(
+        self,
+        handler: Callable[[types.TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: types.Message,
+        data: Dict[str, Any],
+    ) -> Any:
+        user_id = event.from_user.id
+        data["sleep_sec"] = self.sleep_sec
+
+        # Обработчик сообщения
+        result = await handler(event, data)
+
+        # Ожидание в течение заданного времени
+        await asyncio.sleep(self.sleep_sec)
+
+        # Проверка состояния
+        state = data.get("state")
+        if state:
+            current_state = await state.get_state()
+            if current_state == LastMsg.msg:
+                await event.answer("Вы забыли ответить")
+                print("Не ответили")
+
+        return result
+
+
+router.message.middleware(SlowpokeMiddleware(sleep_sec=5))
+
+
+@router.message(CommandStart())
+async def start(message: types.Message, state: FSMContext):
+    user = message.from_user.first_name
+    await message.answer(f"Привет {user}! Как ты сегодня?")
+    await state.set_state(LastMsg.msg)
+
+
+@router.message()
+async def handle_message(message: types.Message, state: FSMContext):
+    await state.set_state(None)
 
 @router.message(Command("help"))
 async def help(message: types.Message):

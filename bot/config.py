@@ -20,6 +20,10 @@ class Form(StatesGroup):
     age = State()
 
 
+class LastMsg(StatesGroup):
+    msg = State()
+
+
 KEYBOARD = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="/start")],
