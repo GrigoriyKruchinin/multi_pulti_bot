@@ -37,8 +37,8 @@ class SlowpokeMiddleware(BaseMiddleware):
         :param data: Дополнительные данные, переданные в контексте.
         :return: Результат выполнения обработчика.
         """
-        # Проверяем, является ли сообщение командой /start
-        if event.text.startswith("/start"):
+        # Проверяем, является ли сообщение командой /start и не является ли командой /start_fsm
+        if event.text.startswith("/start") and event.text != "/start_fsm":
             # Устанавливаем время задержки в контекст
             data["sleep_sec"] = self.sleep_sec
 
