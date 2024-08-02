@@ -39,23 +39,34 @@ class SlowpokeMiddleware(BaseMiddleware):
         """
         # Проверяем, является ли сообщение командой /start и не является ли командой /start_fsm
         if event.text.startswith("/start") and event.text != "/start_fsm":
-            # Устанавливаем время задержки в контекст
+            # Устанавливаем время задержки в контекст данных
             data["sleep_sec"] = self.sleep_sec
+            # Получаем состояние FSM из данных контекста
+            state: FSMContext = data.get("state")
+
+            if state:
+                # Сбрасываем состояние и данные при новом вызове команды /start
+                await state.clear()
+                await state.update_data(notified=False)
 
             # Вызываем обработчик события
             result = await handler(event, data)
-
             # Задержка на указанное количество секунд
             await asyncio.sleep(self.sleep_sec)
 
-            # Проверяем состояние FSM
-            state = data.get("state")
             if state:
+                # Получаем текущее состояние FSM
                 current_state = await state.get_state()
-                # Если состояние все еще LastMsg.msg, значит пользователь не ответил
-                if current_state == LastMsg.msg:
+                # Получаем данные FSM
+                notified = await state.get_data()
+                # Проверяем, если состояние равно LastMsg.msg и напоминание еще не отправлено
+                if current_state == LastMsg.msg and not notified.get("notified", False):
+                    # Отправляем напоминание пользователю
                     await event.answer("Вы забыли ответить")
+                    # Обновляем данные FSM, устанавливая флаг напоминания
+                    await state.update_data(notified=True)
         else:
-            # Если сообщение не команда /start, просто вызываем обработчик
+            # Если сообщение не команда /start или команда /start_fsm, просто вызываем обработчик
             result = await handler(event, data)
+
         return result
